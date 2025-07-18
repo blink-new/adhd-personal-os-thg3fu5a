@@ -1,23 +1,79 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Calendar, Clock, Target, Brain, TrendingUp, Plus, Zap, Shield } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TaskCard } from '@/components/TaskCard'
+import { WeeklyPlanner } from '@/components/WeeklyPlanner'
+import { AnxietyManager } from '@/components/AnxietyManager'
+import { ReflectionHub } from '@/components/ReflectionHub'
+import { blink } from '@/blink/client'
 
 function App() {
   const [currentWeek] = useState(new Date())
   const [energyLevel, setEnergyLevel] = useState(75)
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   
-  const todayTasks = [
-    { id: 1, title: 'Review project proposal', priority: 'high', estimated: 45, actual: null, completed: false },
-    { id: 2, title: 'Team standup meeting', priority: 'medium', estimated: 30, actual: 25, completed: true },
-    { id: 3, title: 'Write documentation', priority: 'medium', estimated: 90, actual: null, completed: false },
-    { id: 4, title: 'Code review', priority: 'low', estimated: 20, actual: null, completed: false },
-  ]
+  const [todayTasks, setTodayTasks] = useState([
+    { 
+      id: '1', 
+      title: 'Review project proposal', 
+      description: 'Go through the Q3 project proposal and provide feedback',
+      priority: 'high', 
+      estimatedMinutes: 45, 
+      actualMinutes: null, 
+      completed: false,
+      energyRequired: 'high',
+      category: 'Work'
+    },
+    { 
+      id: '2', 
+      title: 'Team standup meeting', 
+      description: 'Daily sync with the development team',
+      priority: 'medium', 
+      estimatedMinutes: 30, 
+      actualMinutes: 25, 
+      completed: true,
+      energyRequired: 'medium',
+      category: 'Meetings'
+    },
+    { 
+      id: '3', 
+      title: 'Write documentation', 
+      description: 'Update API documentation for new endpoints',
+      priority: 'medium', 
+      estimatedMinutes: 90, 
+      actualMinutes: null, 
+      completed: false,
+      energyRequired: 'medium',
+      category: 'Work'
+    },
+    { 
+      id: '4', 
+      title: 'Code review', 
+      description: 'Review pull requests from team members',
+      priority: 'low', 
+      estimatedMinutes: 20, 
+      actualMinutes: null, 
+      completed: false,
+      energyRequired: 'low',
+      category: 'Work'
+    },
+  ])
+
+  // Authentication state management
+  useEffect(() => {
+    const unsubscribe = blink.auth.onAuthStateChanged((state) => {
+      setUser(state.user)
+      setLoading(state.isLoading)
+    })
+    return unsubscribe
+  }, [])
 
   const weeklyStats = {
     tasksCompleted: 12,
@@ -26,6 +82,62 @@ function App() {
     totalEstimates: 12,
     focusTime: 24.5,
     targetFocusTime: 30
+  }
+
+  // Task management functions
+  const handleToggleComplete = (taskId: string) => {
+    setTodayTasks(tasks => 
+      tasks.map(task => 
+        task.id === taskId 
+          ? { ...task, completed: !task.completed }
+          : task
+      )
+    )
+  }
+
+  const handleStartTimer = (taskId: string) => {
+    console.log('Starting timer for task:', taskId)
+    // Timer logic would go here
+  }
+
+  const handleUpdateActualTime = (taskId: string, minutes: number) => {
+    setTodayTasks(tasks => 
+      tasks.map(task => 
+        task.id === taskId 
+          ? { ...task, actualMinutes: minutes }
+          : task
+      )
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-4 mx-auto animate-pulse">
+            <Brain className="w-5 h-5 text-white" />
+          </div>
+          <p className="text-slate-600">Loading your Personal OS...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mb-6 mx-auto">
+            <Brain className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">ADHD Personal OS</h1>
+          <p className="text-slate-600 mb-6">Your productivity companion designed specifically for ADHD minds</p>
+          <Button onClick={() => blink.auth.login()} className="bg-indigo-600 hover:bg-indigo-700">
+            Sign In to Get Started
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -49,6 +161,17 @@ function App() {
                 <Zap className="w-4 h-4 text-amber-500" />
                 <span className="text-sm font-medium text-slate-700">Energy: {energyLevel}%</span>
                 <Progress value={energyLevel} className="w-20 h-2" />
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-slate-600">Welcome, {user.email?.split('@')[0]}</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => blink.auth.logout()}
+                  className="text-slate-600 hover:text-slate-900"
+                >
+                  Sign Out
+                </Button>
               </div>
               <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
                 <Plus className="w-4 h-4 mr-1" />
@@ -100,41 +223,13 @@ function App() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {todayTasks.map((task) => (
-                      <div key={task.id} className={`p-4 rounded-lg border-2 transition-all ${
-                        task.completed 
-                          ? 'bg-green-50 border-green-200 opacity-75' 
-                          : 'bg-white border-slate-200 hover:border-indigo-300'
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-4 h-4 rounded-full border-2 ${
-                              task.completed 
-                                ? 'bg-green-500 border-green-500' 
-                                : 'border-slate-300'
-                            }`} />
-                            <div>
-                              <h4 className={`font-medium ${task.completed ? 'line-through text-slate-500' : 'text-slate-900'}`}>
-                                {task.title}
-                              </h4>
-                              <div className="flex items-center space-x-2 mt-1">
-                                <Badge variant={
-                                  task.priority === 'high' ? 'destructive' : 
-                                  task.priority === 'medium' ? 'default' : 'secondary'
-                                }>
-                                  {task.priority}
-                                </Badge>
-                                <span className="text-sm text-slate-500">
-                                  Est: {task.estimated}min
-                                  {task.actual && ` • Actual: ${task.actual}min`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="sm">
-                            Start
-                          </Button>
-                        </div>
-                      </div>
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onToggleComplete={handleToggleComplete}
+                        onStartTimer={handleStartTimer}
+                        onUpdateActualTime={handleUpdateActualTime}
+                      />
                     ))}
                   </CardContent>
                 </Card>
@@ -229,18 +324,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="planner">
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Planner</CardTitle>
-                <CardDescription>Plan your week with ADHD-friendly time blocks</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-slate-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Weekly planner coming soon...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <WeeklyPlanner currentWeek={currentWeek} />
           </TabsContent>
 
           <TabsContent value="tracker">
@@ -252,40 +336,18 @@ function App() {
               <CardContent>
                 <div className="text-center py-12 text-slate-500">
                   <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Time tracker coming soon...</p>
+                  <p>Advanced time tracking features coming soon...</p>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="reflection">
-            <Card>
-              <CardHeader>
-                <CardTitle>Reflection Hub</CardTitle>
-                <CardDescription>Analyze patterns and improve your productivity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-slate-500">
-                  <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Reflection hub coming soon...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ReflectionHub />
           </TabsContent>
 
           <TabsContent value="anxiety">
-            <Card>
-              <CardHeader>
-                <CardTitle>Anxiety Management</CardTitle>
-                <CardDescription>Tools to handle unexpected events and maintain priorities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-slate-500">
-                  <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Anxiety management tools coming soon...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AnxietyManager />
           </TabsContent>
         </Tabs>
       </main>
